@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
 
               # **Important Notes**
-              - Ensure that the EMS code strictly follows **FIFe’s official EMS system**.
+              - Ensure that the EMS code strictly follows **FIFe's official EMS system**.
               - If the image is unclear, blurred, or contains multiple animals, return "ems_code": null with an appropriate explanation.
               - Keep your response **concise, precise, and strictly in JSON format**.
 
@@ -251,9 +251,32 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    const emsCode = data.candidates[0].content.parts[0].text.trim();
+    const responseText = data.candidates[0].content.parts[0].text.trim();
+    let emsCode = null;
+    let detected = false;
+    let message = null;
 
-    return NextResponse.json({ emsCode });
+    // Try to parse the response as JSON
+    try {
+      // Extract JSON from the response text
+      const jsonString = responseText.includes("```json")
+        ? responseText.substring(
+            responseText.indexOf("```json") + 7,
+            responseText.lastIndexOf("```")
+          )
+        : responseText;
+
+      const jsonResponse = JSON.parse(jsonString);
+      emsCode = jsonResponse.ems_code || null;
+      detected = jsonResponse.detected || false;
+      message = jsonResponse.message || null;
+    } catch (e) {
+      console.error("Failed to parse JSON from response:", e);
+      // If parsing fails, treat the entire response as the message
+      message = responseText;
+    }
+
+    return NextResponse.json({ emsCode, detected, message });
   } catch (error) {
     console.error("Error processing image:", error);
     return NextResponse.json(
