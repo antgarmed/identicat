@@ -7,7 +7,11 @@ export default function Home() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [result, setResult] = useState<{
+    emsCode: string | null;
+    detected: boolean | null;
+    message: string | null;
+  } | null>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -32,10 +36,14 @@ export default function Home() {
       });
 
       const data = await response.json();
-      setResult(data.emsCode);
+      setResult(data);
     } catch (error) {
       console.error("Error identifying cat:", error);
-      setResult("Error identifying cat. Please try again.");
+      setResult({
+        emsCode: null,
+        detected: false,
+        message: "Error identifying cat. Please try again.",
+      });
     } finally {
       setLoading(false);
     }
@@ -90,7 +98,16 @@ export default function Home() {
         {result && (
           <div className="p-4 bg-blue-100 rounded-lg text-black">
             <h2 className="font-medium mb-2">Result:</h2>
-            <p>{result}</p>
+            {result.emsCode ? (
+              <>
+                <p>EMS Code: {result.emsCode}</p>
+                {result.message && <p>{result.message}</p>}
+              </>
+            ) : (
+              <p>
+                {result.message || "No cat detected or unable to identify."}
+              </p>
+            )}
           </div>
         )}
       </div>
