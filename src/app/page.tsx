@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Image from 'next/image';
+import { useState } from "react";
+import Image from "next/image";
 
 export default function Home() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -24,18 +24,18 @@ export default function Home() {
     setLoading(true);
     try {
       const formData = new FormData();
-      formData.append('image', selectedImage);
+      formData.append("image", selectedImage);
 
-      const response = await fetch('/api/identify', {
-        method: 'POST',
+      const response = await fetch("/api/identify", {
+        method: "POST",
         body: formData,
       });
 
       const data = await response.json();
       setResult(data.emsCode);
     } catch (error) {
-      console.error('Error identifying cat:', error);
-      setResult('Error identifying cat. Please try again.');
+      console.error("Error identifying cat:", error);
+      setResult("Error identifying cat. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -81,10 +81,10 @@ export default function Home() {
           onClick={handleIdentify}
           disabled={!selectedImage || loading}
           className={`w-full py-3 px-4 rounded-lg font-medium text-white ${
-            selectedImage ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400'
+            selectedImage ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400"
           } transition-colors disabled:cursor-not-allowed`}
         >
-          {loading ? 'Identicating...' : 'IDENTICATE'}
+          {loading ? "Identicating..." : "IDENTICATE"}
         </button>
 
         {result && (
