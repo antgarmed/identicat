@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Image from "next/image";
+import { useDropzone } from "react-dropzone";
 
 export default function Home() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -12,15 +13,6 @@ export default function Home() {
     detected: boolean | null;
     message: string | null;
   } | null>(null);
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setSelectedImage(file);
-      setPreview(URL.createObjectURL(file));
-      setResult(null);
-    }
-  };
 
   const handleIdentify = async () => {
     if (!selectedImage) return;
@@ -49,6 +41,25 @@ export default function Home() {
     }
   };
 
+  // useCallback is used to memoize the function, preventing unnecessary re-renders
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const file = acceptedFiles[0];
+    if (file) {
+      setSelectedImage(file);
+      setPreview(URL.createObjectURL(file));
+      setResult(null);
+    }
+  }, []);
+
+  // useDropzone hook to handle drag and drop functionality
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "image/*": [".jpeg", ".png", ".jpg"],
+    },
+    multiple: false, // Only allow single file upload
+  });
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-8">
       <h1 className="text-4xl font-bold mb-8">Indenticat</h1>
@@ -57,33 +68,35 @@ export default function Home() {
       </p>
 
       <div className="w-full max-w-md space-y-4">
-        <label className="block w-full">
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-gray-400 transition-colors">
-            {preview ? (
-              <div className="relative w-full aspect-square">
-                <Image
-                  src={preview}
-                  alt="Preview"
-                  fill
-                  className="object-contain rounded-lg"
-                />
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <p>Click or drag and drop an image here</p>
-                <p className="text-sm text-gray-500">
-                  Supported formats: JPG, PNG
-                </p>
-              </div>
-            )}
-            <input
-              type="file"
-              className="hidden"
-              accept="image/*"
-              onChange={handleImageChange}
-            />
-          </div>
-        </label>
+        <div
+          {...getRootProps()}
+          className={`block w-full ${
+            isDragActive ? "border-blue-500" : "border-gray-300"
+          } border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-gray-400 transition-colors`}
+        >
+          <input {...getInputProps()} />
+          {preview ? (
+            <div className="relative w-full aspect-square">
+              <Image
+                src={preview}
+                alt="Preview"
+                fill
+                className="object-contain rounded-lg"
+              />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p>
+                {isDragActive
+                  ? "Drop the image here..."
+                  : "Click or drag and drop an image here"}
+              </p>
+              <p className="text-sm text-gray-500">
+                Supported formats: JPG, PNG
+              </p>
+            </div>
+          )}
+        </div>
 
         <button
           onClick={handleIdentify}
