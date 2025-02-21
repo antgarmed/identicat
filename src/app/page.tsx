@@ -84,11 +84,11 @@ export default function Home() {
             selectedImage ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400'
           } transition-colors disabled:cursor-not-allowed`}
         >
-          {loading ? 'Identifying...' : 'IDENTICAT'}
+          {loading ? 'Identicating...' : 'IDENTICATE'}
         </button>
 
         {result && (
-          <div className="p-4 bg-gray-100 rounded-lg">
+          <div className="p-4 bg-blue-100 rounded-lg text-black">
             <h2 className="font-medium mb-2">Result:</h2>
             <p>{result}</p>
           </div>
