@@ -97,11 +97,19 @@ export default function Home() {
 
         {result && (
           <div className="p-4 bg-blue-100 rounded-lg text-black">
-            <h2 className="font-medium mb-2">Result:</h2>
             {result.emsCode ? (
               <>
-                <p>EMS Code: {result.emsCode}</p>
-                {result.message && <p>{result.message}</p>}
+                <div className="flex flex-wrap gap-2">
+                  {result.emsCode.split(" ").map((code, index) => (
+                    <span
+                      key={index}
+                      className="inline-block bg-blue-500 text-white text-sm font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300"
+                    >
+                      {code}
+                    </span>
+                  ))}
+                </div>
+                {result.message && <p className="mt-2">{result.message}</p>}
               </>
             ) : (
               <p>
