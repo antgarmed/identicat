@@ -91,6 +91,7 @@ describe('POST /api/identify', () => {
     (global.fetch as Mock).mockResolvedValue({
       ok: false,
       status: 500,
+      text: () => Promise.resolve('Internal Server Error'),
     });
 
     const formData = new FormData();
