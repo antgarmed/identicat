@@ -1,10 +1,9 @@
 import { describe, it, expect, vi, beforeEach, Mock } from 'vitest';
-import { POST } from './route';
-import { NextRequest } from 'next/server';
+import { identifyCat } from './identify';
 
 /**
- * @file route.test.ts
- * @description Unit tests for the cat identification API route.
+ * @file identify.test.ts
+ * @description Unit tests for the cat identification Server Action.
  * Handles mocking the Gemini API response and testing various edge cases.
  */
 
@@ -12,7 +11,7 @@ import { NextRequest } from 'next/server';
 const MOCK_API_KEY = 'test-key';
 process.env.GEMINI_API_KEY = MOCK_API_KEY;
 
-describe('POST /api/identify', () => {
+describe('identifyCat Server Action', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     global.fetch = vi.fn();
@@ -20,18 +19,13 @@ describe('POST /api/identify', () => {
 
   /**
    * @test No image provided
-   * @description Verifies that the API returns a 400 error when no image is uploaded.
+   * @description Verifies that the action returns an error when no image is uploaded.
    */
-  it('returns 400 if no image is provided', async () => {
-    const req = {
-      formData: vi.fn().mockResolvedValue(new FormData()),
-    } as unknown as NextRequest;
+  it('returns error if no image is provided', async () => {
+    const formData = new FormData();
+    const result = await identifyCat(formData);
 
-    const response = await POST(req);
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.error).toBe('No image provided');
+    expect(result.error).toBe('No image provided');
   });
 
   /**
@@ -49,6 +43,7 @@ describe('POST /api/identify', () => {
                   ems_code: 'BRI n 24',
                   detected: true,
                   message: 'British Shorthair Black Spotted Tabby',
+                  confidence: 0.95,
                 }),
               },
             ],
@@ -66,28 +61,23 @@ describe('POST /api/identify', () => {
     const file = new File(['mock-image-content'], 'cat.jpg', {
       type: 'image/jpeg',
     });
-    // Mock arrayBuffer since it's used in the route
+    // Mock arrayBuffer since it's used in the action
     file.arrayBuffer = vi.fn().mockResolvedValue(new ArrayBuffer(8));
     formData.append('image', file);
 
-    const req = {
-      formData: vi.fn().mockResolvedValue(formData),
-    } as unknown as NextRequest;
+    const result = await identifyCat(formData);
 
-    const response = await POST(req);
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.emsCode).toBe('BRI n 24');
-    expect(data.detected).toBe(true);
-    expect(data.message).toBe('British Shorthair Black Spotted Tabby');
+    expect(result.emsCode).toBe('BRI n 24');
+    expect(result.detected).toBe(true);
+    expect(result.message).toBe('British Shorthair Black Spotted Tabby');
+    expect(result.confidence).toBe(95);
   });
 
   /**
    * @test Gemini API failure
-   * @description Verifies that the API returns a 500 error when the upstream API fails.
+   * @description Verifies that the action returns an error when the upstream API fails.
    */
-  it('returns 500 if Gemini API request fails', async () => {
+  it('returns error if Gemini API request fails', async () => {
     (global.fetch as Mock).mockResolvedValue({
       ok: false,
       status: 500,
@@ -101,20 +91,14 @@ describe('POST /api/identify', () => {
     file.arrayBuffer = vi.fn().mockResolvedValue(new ArrayBuffer(8));
     formData.append('image', file);
 
-    const req = {
-      formData: vi.fn().mockResolvedValue(formData),
-    } as unknown as NextRequest;
+    const result = await identifyCat(formData);
 
-    const response = await POST(req);
-    const data = await response.json();
-
-    expect(response.status).toBe(500);
-    expect(data.error).toBe('Failed to process image');
+    expect(result.error).toBe('Failed to process image');
   });
 
   /**
    * @test Robust JSON parsing
-   * @description Verifies that the API can handle JSON wrapped in markdown code blocks.
+   * @description Verifies that the action can handle JSON wrapped in markdown code blocks.
    */
   it('handles JSON response wrapped in markdown', async () => {
     const mockGeminiResponse = {
@@ -123,7 +107,7 @@ describe('POST /api/identify', () => {
           content: {
             parts: [
               {
-                text: '```json\n{"ems_code": "MCO n 03", "detected": true, "message": "Maine Coon bicolor"}\n```',
+                text: '```json\n{"ems_code": "MCO n 03", "detected": true, "message": "Maine Coon bicolor", "confidence": 100}\n```',
               },
             ],
           },
@@ -143,14 +127,9 @@ describe('POST /api/identify', () => {
     file.arrayBuffer = vi.fn().mockResolvedValue(new ArrayBuffer(8));
     formData.append('image', file);
 
-    const req = {
-      formData: vi.fn().mockResolvedValue(formData),
-    } as unknown as NextRequest;
+    const result = await identifyCat(formData);
 
-    const response = await POST(req);
-    const data = await response.json();
-
-    expect(data.emsCode).toBe('MCO n 03');
-    expect(data.detected).toBe(true);
+    expect(result.emsCode).toBe('MCO n 03');
+    expect(result.detected).toBe(true);
   });
 });

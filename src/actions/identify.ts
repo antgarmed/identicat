@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+'use server';
 
 const API_KEY = process.env.GEMINI_API_KEY;
 const MODEL_ID = 'gemini-2.5-flash-lite';
@@ -6,13 +6,12 @@ const USE_THINKING = false;
 const GENERATE_CONTENT_API = 'streamGenerateContent';
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:${GENERATE_CONTENT_API}?key=${API_KEY}`;
 
-export async function POST(request: NextRequest) {
+export async function identifyCat(formData: FormData) {
   try {
-    const formData = await request.formData();
     const image = formData.get('image') as File;
 
     if (!image) {
-      return NextResponse.json({ error: 'No image provided' }, { status: 400 });
+      return { error: 'No image provided' };
     }
 
     const buffer = await image.arrayBuffer();
@@ -330,12 +329,9 @@ export async function POST(request: NextRequest) {
       message = responseText;
     }
 
-    return NextResponse.json({ emsCode, detected, message, confidence });
+    return { emsCode, detected, message, confidence };
   } catch (error) {
     console.error('Error processing image:', error);
-    return NextResponse.json(
-      { error: 'Failed to process image' },
-      { status: 500 }
-    );
+    return { error: 'Failed to process image' };
   }
 }

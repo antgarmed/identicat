@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, Mock } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Home from './page';
+import { identifyCat } from '@/actions/identify';
 
 /**
  * @file page.test.tsx
@@ -11,11 +12,14 @@ import Home from './page';
 // Mock URL.createObjectURL since it's not available in jsdom
 global.URL.createObjectURL = vi.fn(() => 'mock-url');
 
+// Mock the server action
+vi.mock('@/actions/identify', () => ({
+  identifyCat: vi.fn(),
+}));
+
 describe('Home Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset global fetch mock
-    global.fetch = vi.fn();
   });
 
   /**
@@ -64,19 +68,17 @@ describe('Home Component', () => {
 
   /**
    * @test Cat identification success
-   * @description Mocks a successful API call to /api/identify and checks if the EMS code is displayed.
+   * @description Mocks a successful call to the server action and checks if the EMS code is displayed.
    */
   it('displays the result after successful identification', async () => {
     const mockResponse = {
       emsCode: 'PER n 22',
       detected: true,
       message: 'A beautiful black blotched tabby Persian cat.',
+      confidence: 90,
     };
 
-    (global.fetch as Mock).mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(mockResponse),
-    });
+    (identifyCat as Mock).mockResolvedValue(mockResponse);
 
     render(<Home />);
     const file = new File(['hello'], 'cat.png', { type: 'image/png' });
@@ -107,15 +109,16 @@ describe('Home Component', () => {
       expect(
         screen.getByText('A beautiful black blotched tabby Persian cat.')
       ).toBeInTheDocument();
+      expect(screen.getByText('90%')).toBeInTheDocument();
     });
   });
 
   /**
    * @test Error handling
-   * @description Simulates an API failure and verifies the error message is displayed.
+   * @description Simulates an action failure and verifies the error message is displayed.
    */
   it('shows an error message when identification fails', async () => {
-    (global.fetch as Mock).mockRejectedValue(new Error('API Error'));
+    (identifyCat as Mock).mockRejectedValue(new Error('Action Error'));
 
     render(<Home />);
     const file = new File(['hello'], 'cat.png', { type: 'image/png' });

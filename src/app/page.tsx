@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useDropzone } from 'react-dropzone';
+import { identifyCat } from '@/actions/identify';
 
 export default function Home() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -13,6 +14,7 @@ export default function Home() {
     detected: boolean | null;
     message: string | null;
     confidence: number | null;
+    error?: string;
   } | null>(null);
 
   const handleIdentify = async () => {
@@ -23,13 +25,17 @@ export default function Home() {
       const formData = new FormData();
       formData.append('image', selectedImage);
 
-      const response = await fetch('/api/identify', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-      setResult(data);
+      const data = await identifyCat(formData);
+      if ('error' in data) {
+        setResult({
+          emsCode: null,
+          detected: false,
+          message: data.error ?? null,
+          confidence: 0,
+        });
+      } else {
+        setResult(data);
+      }
     } catch (error) {
       console.error('Error identifying cat:', error);
       setResult({
@@ -116,14 +122,16 @@ export default function Home() {
               <>
                 <div className="flex justify-between items-center mb-2">
                   <div className="flex flex-wrap gap-2">
-                    {result.emsCode?.split(' ').map((code, index) => (
-                      <span
-                        key={index}
-                        className="inline-block bg-blue-500 text-white text-sm font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300"
-                      >
-                        {code}
-                      </span>
-                    ))}
+                    {result.emsCode
+                      ?.split(' ')
+                      .map((code: string, index: number) => (
+                        <span
+                          key={index}
+                          className="inline-block bg-blue-500 text-white text-sm font-medium px-2.5 py-0.5 rounded dark:bg-blue-900 dark:text-blue-300"
+                        >
+                          {code}
+                        </span>
+                      ))}
                   </div>
                   {result.confidence !== null && (
                     <span className="text-sm font-bold text-blue-800">
