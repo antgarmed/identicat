@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
         {
           parts: [
             {
-              text: 'Analyze this cat and provide the response in JSON format. Just return the JSON response, no other text.',
+              text: 'Analyze the cat in the image and identify its EMS code according to the system instructions.',
             },
             {
               inline_data: {
@@ -58,7 +58,8 @@ export async function POST(request: NextRequest) {
               {
                 "ems_code": "XXXX",  // A string containing the EMS code, or null if not applicable
                 "detected": true/false,  // A boolean indicating whether a cat was detected
-                "message": "Explanation or error message if applicable"
+                "message": "Explanation or error message if applicable",
+                "confidence": 0-100 // Integer representing your confidence level in the identification
               }
 
 
@@ -239,15 +240,29 @@ export async function POST(request: NextRequest) {
           },
         ],
       },
-      ...(USE_THINKING
-        ? {
-            generationConfig: {
+      generationConfig: {
+        response_mime_type: 'application/json',
+        response_schema: {
+          type: 'object',
+          properties: {
+            ems_code: { type: 'string', nullable: true },
+            detected: { type: 'boolean' },
+            message: { type: 'string' },
+            confidence: {
+              type: 'number',
+              description: 'Confidence percentage (0-100)',
+            },
+          },
+          required: ['ems_code', 'detected', 'message', 'confidence'],
+        },
+        ...(USE_THINKING
+          ? {
               thinkingConfig: {
                 thinkingLevel: 'HIGH',
               },
-            },
-          }
-        : {}),
+            }
+          : {}),
+      },
     };
 
     const response = await fetch(API_URL, {
@@ -281,6 +296,7 @@ export async function POST(request: NextRequest) {
     let emsCode = null;
     let detected = false;
     let message = null;
+    let confidence = 0;
 
     // Try to parse the response as JSON
     try {
@@ -296,6 +312,13 @@ export async function POST(request: NextRequest) {
       emsCode = jsonResponse.ems_code || null;
       detected = jsonResponse.detected || false;
       message = jsonResponse.message || null;
+
+      // Ensure confidence is a percentage (0-100)
+      const rawConfidence = jsonResponse.confidence || 0;
+      confidence =
+        rawConfidence <= 1
+          ? Math.round(rawConfidence * 100)
+          : Math.round(rawConfidence);
     } catch (e) {
       console.error(
         'Failed to parse JSON from response:',
@@ -307,7 +330,7 @@ export async function POST(request: NextRequest) {
       message = responseText;
     }
 
-    return NextResponse.json({ emsCode, detected, message });
+    return NextResponse.json({ emsCode, detected, message, confidence });
   } catch (error) {
     console.error('Error processing image:', error);
     return NextResponse.json(
