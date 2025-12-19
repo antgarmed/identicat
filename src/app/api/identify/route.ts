@@ -1,26 +1,29 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from 'next/server';
 
 const API_KEY = process.env.GEMINI_API_KEY;
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-thinking-exp-01-21:generateContent?key=${API_KEY}`;
+const MODEL_ID = 'gemini-2.5-flash-lite';
+const USE_THINKING = false;
+const GENERATE_CONTENT_API = 'streamGenerateContent';
+const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_ID}:${GENERATE_CONTENT_API}?key=${API_KEY}`;
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
-    const image = formData.get("image") as File;
+    const image = formData.get('image') as File;
 
     if (!image) {
-      return NextResponse.json({ error: "No image provided" }, { status: 400 });
+      return NextResponse.json({ error: 'No image provided' }, { status: 400 });
     }
 
     const buffer = await image.arrayBuffer();
-    const base64Image = Buffer.from(buffer).toString("base64");
+    const base64Image = Buffer.from(buffer).toString('base64');
 
     const payload = {
       contents: [
         {
           parts: [
             {
-              text: "Analyze this cat and provide the response in JSON format. Just return the JSON response, no other text.",
+              text: 'Analyze this cat and provide the response in JSON format. Just return the JSON response, no other text.',
             },
             {
               inline_data: {
@@ -32,7 +35,7 @@ export async function POST(request: NextRequest) {
         },
       ],
       systemInstruction: {
-        role: "user",
+        role: 'user',
         parts: [
           {
             text: `
@@ -236,22 +239,45 @@ export async function POST(request: NextRequest) {
           },
         ],
       },
+      ...(USE_THINKING
+        ? {
+            generationConfig: {
+              thinkingConfig: {
+                thinkingLevel: 'HIGH',
+              },
+            },
+          }
+        : {}),
     };
 
     const response = await fetch(API_URL, {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
+      const errorData = await response.text();
+      console.error('API request failed:', errorData);
       throw new Error(`API request failed with status ${response.status}`);
     }
 
     const data = await response.json();
-    const responseText = data.candidates[0].content.parts[0].text.trim();
+
+    // streamGenerateContent returns an array of response objects
+    let responseText = '';
+    if (Array.isArray(data)) {
+      responseText = data
+        .map((chunk) => chunk.candidates?.[0]?.content?.parts?.[0]?.text || '')
+        .join('')
+        .trim();
+    } else {
+      responseText =
+        data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    }
+
     let emsCode = null;
     let detected = false;
     let message = null;
@@ -259,10 +285,10 @@ export async function POST(request: NextRequest) {
     // Try to parse the response as JSON
     try {
       // Extract JSON from the response text
-      const jsonString = responseText.includes("```json")
+      const jsonString = responseText.includes('```json')
         ? responseText.substring(
-            responseText.indexOf("```json") + 7,
-            responseText.lastIndexOf("```")
+            responseText.indexOf('```json') + 7,
+            responseText.lastIndexOf('```')
           )
         : responseText;
 
@@ -271,16 +297,21 @@ export async function POST(request: NextRequest) {
       detected = jsonResponse.detected || false;
       message = jsonResponse.message || null;
     } catch (e) {
-      console.error("Failed to parse JSON from response:", e);
+      console.error(
+        'Failed to parse JSON from response:',
+        e,
+        'Response text:',
+        responseText
+      );
       // If parsing fails, treat the entire response as the message
       message = responseText;
     }
 
     return NextResponse.json({ emsCode, detected, message });
   } catch (error) {
-    console.error("Error processing image:", error);
+    console.error('Error processing image:', error);
     return NextResponse.json(
-      { error: "Failed to process image" },
+      { error: 'Failed to process image' },
       { status: 500 }
     );
   }
