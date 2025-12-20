@@ -14,8 +14,13 @@ export async function identifyCat(formData: FormData) {
       return { error: 'No image provided' };
     }
 
-    const buffer = await image.arrayBuffer();
-    const base64Image = Buffer.from(buffer).toString('base64');
+    const bytes = await image.arrayBuffer();
+    const base64Image = btoa(
+      new Uint8Array(bytes).reduce(
+        (data, byte) => data + String.fromCharCode(byte),
+        ''
+      )
+    );
 
     const payload = {
       contents: [
